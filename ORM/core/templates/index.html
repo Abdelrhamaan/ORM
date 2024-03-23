@@ -2,9 +2,42 @@
 
 
 {% block content %}
-<form method="POST">
+<!-- <form method="POST">
     {% csrf_token %}
     {{ form.as_p }}
     <button class="btn btn-primary" type="submit"> submit</button>
-</form>
+</form> -->
+
+<!-- prefetch related -->
+<!-- {% for res in restaurants %}
+<p>{{res.name}}</p>
+{% for rating in res.rating.all %}
+<ul>
+    <li>
+
+        {{rating.rating}}
+    </li>
+</ul>
+{% for sale in res.sale_related.all  %}
+<ul>
+    <li>
+
+        {{sale.income}}
+    </li>
+</ul>
+{% endfor %}
+{% endfor %}
+{% endfor %} -->
+
+<!-- select related  -->
+<!-- {% for rate in ratings  %} -->
+<!-- <ul> -->
+    <!-- <li> -->
+        <!-- this will make one query because fields in only -->
+        <!-- {{rate.restauarant.name}} - {{rate.rating}}  -->
+        <!-- while this will make alot of queries because rate.user.first_name not in only -->
+         <!-- {{rate.restauarant.name}} - {{rate.rating}} - {{rate.user.first_name}} -->
+    <!-- </li> -->
+<!-- </ul> -->
+<!-- {% endfor %} -->
 {% endblock %}
