@@ -93,14 +93,14 @@ class Sale(models.Model):
 
 class Staff(models.Model):
     name = models.CharField(max_length=255)
-    restaurant = models.ManyToManyField(Restaurant)
-    # restaurant = models.ManyToManyField(Restaurant, through='StaffRestauarant')
+    # restaurant = models.ManyToManyField(Restaurant)
+    restaurant = models.ManyToManyField(Restaurant, through='StaffRestauarant')
 
     def __str__(self) -> str:
         return self.name
 
 
-# class StaffRestauarant(models.Model):
-#     staff = models.ForeignKey(Staff, on_delete=models.CASCADE)
-#     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE)
-#     salary = models.FloatField(null=True)
+class StaffRestauarant(models.Model):
+    staff = models.ForeignKey(Staff, on_delete=models.CASCADE)
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE)
+    salary = models.FloatField(null=True)

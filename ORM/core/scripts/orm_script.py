@@ -1,14 +1,14 @@
-from core.models import Restaurant, Rating, Sale, Staff
+from core.models import Restaurant, Rating, Sale, Staff, StaffRestauarant
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.db import connection
 from pprint import pprint
 from django.db.models.functions import Lower
-
+import random
 
 def run():
     # restaurant = Restaurant()
-    # restaurant.name = 'sobhy'
+    # restaurant.name = 'asobhy'
     # restaurant.date_opened = timezone.now()
     # restaurant.latitude = 50.2
     # restaurant.longitude = 50.2
@@ -23,11 +23,11 @@ def run():
     # ===============
 
     # Restaurant.objects.create(
-    #     name = "blabn",
-    #     date_opened = timezone.now(),
-    #     latitude = 25.5,
-    #     longitude = 25.5,
-    #     restaurant_type = Restaurant.TypeChoices.CHINESE,
+    #     name="ablabn",
+    #     date_opened=timezone.now(),
+    #     latitude=25.5,
+    #     longitude=25.5,
+    #     restaurant_type=Restaurant.TypeChoices.CHINESE,
     # )
     # ================
     # restaurant = Restaurant.objects.count()
@@ -288,5 +288,37 @@ def run():
     # italian = staff.restaurant.filter(
     #     restaurant_type=Restaurant.TypeChoices.ITALIAN)
     # print(italian)
-    res = Restaurant.objects.get(pk=44)
-    print(res.staff_set.all())
+    # res = Restaurant.objects.get(pk=44)
+    # print(res.staff_set.all())
+    # ========================
+    # staff, create = Staff.objects.get_or_create(name="nader sha5a")
+    # rest = Restaurant.objects.first()
+    # rest2 = Restaurant.objects.last()
+    # StaffRestauarant.objects.create(
+    #     staff=staff, restaurant=rest, salary=28000
+    # )
+    # StaffRestauarant.objects.create(
+    #     staff=staff, restaurant=rest2, salary=24000
+    # )
+    # ==========================
+
+    # rest = StaffRestauarant.objects.filter(
+    #     restaurant__name='asobhy'
+    # )
+
+    # print(rest)
+    # ==========================
+    staff, created = Staff.objects.get_or_create(name='nader sha5a')
+    # rest = Restaurant.objects.first()
+    #  this will create instance with empty salary 
+    # staff.restaurant.add(rest)
+    # this will add for additional fields 
+    # staff.restaurant.add(rest, through_defaults={"salary":28_000})
+    # ==========================
+    staff, created = Staff.objects.get_or_create(name='nader sha5a')
+    staff.restaurant.set(
+        Restaurant.objects.all()[:6],
+        through_defaults={
+            'salary':random.randint(20_000, 80_000)
+        }
+    )
