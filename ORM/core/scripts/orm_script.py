@@ -2,9 +2,12 @@ from core.models import Restaurant, Rating, Sale, Staff, StaffRestauarant
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.db import connection
+from django.db.models import Count, Avg, Max, Min, Sum, Variance, StdDev, CharField, Value
+from django.db.models.functions import Length, Upper, Concat
 from pprint import pprint
-from django.db.models.functions import Lower
+from django.db.models.functions import Lower, Upper
 import random
+
 
 def run():
     # restaurant = Restaurant()
@@ -308,17 +311,130 @@ def run():
 
     # print(rest)
     # ==========================
-    staff, created = Staff.objects.get_or_create(name='nader sha5a')
+    # staff, created = Staff.objects.get_or_create(name='nader sha5a')
     # rest = Restaurant.objects.first()
-    #  this will create instance with empty salary 
+    #  this will create instance with empty salary
     # staff.restaurant.add(rest)
-    # this will add for additional fields 
+    # this will add for additional fields
     # staff.restaurant.add(rest, through_defaults={"salary":28_000})
     # ==========================
-    staff, created = Staff.objects.get_or_create(name='nader sha5a')
-    staff.restaurant.set(
-        Restaurant.objects.all()[:6],
-        through_defaults={
-            'salary':random.randint(20_000, 80_000)
-        }
+    # staff, created = Staff.objects.get_or_create(name='nader sha5a')
+    # staff.restaurant.set(
+    # Restaurant.objects.all()[:6],
+    # through_defaults={
+    # 'salary':random.randint(20_000, 80_000)
+    # }
+    # )
+    # ==========================
+    # rest = Restaurant.objects.values('name', 'date_opened')
+    # rest = Restaurant.objects.values(upper_name=Upper('name'))
+    # print(rest)
+    # ==========================
+    # IT = Restaurant.TypeChoices.ITALIAN
+    # ratings = Rating.objects.filter(
+    #     # restauarant__restaurant_type=IT).values('rating', 'restauarant__name')
+    #     restauarant__restaurant_type=IT).values_list('rating', 'restauarant__name')
+    # print(ratings)
+    # print(connection.queries)
+    # =========================
+    # print(Restaurant.objects.count())
+    # print(Restaurant.objects.filter(name__startswith='a').count())
+    # print(connection.queries)
+    # if not ids_num --- id__count
+    # print(Restaurant.objects.aggregate(ids_num=Count('id')))
+    # ===========================
+    # print(Rating.objects.filter(
+    #     restauarant__name__startswith='a'
+    # ).aggregate(
+    #     average_rating=Avg('rating')
+    # ))
+    # print(Rating.objects.filter(
+    #     restauarant__name__startswith='a'
+    # ).aggregate(
+    #     max_rating=Max('rating')
+    # ))
+    # print(Rating.objects.filter(
+    #     restauarant__name__startswith='a'
+    # ).aggregate(
+    #     min_rating=Min('rating')
+    # ))
+    # print(Rating.objects.filter(
+    #     restauarant__name__startswith='a'
+    # ).values('rating'))
+    # =======================
+    # print(Sale.objects.aggregate(
+    #     max=Max('income'),
+    #     min=Min('income'),
+    #     avg=Avg('income'),
+    #     sum=Sum('income')
+    # ))
+    # sales = Sale.objects.filter(datatime__gte='2024-03-05')
+    # sales.aggregate(
+    #     max=Max('income'),
+    #     min=Min('income'),
+    #     avg=Avg('income'),
+    #     sum=Sum('income')
+    # )
+    # print(Sale.objects.filter(datatime__gte='2024-03-05').aggregate(
+    #     max=Max('income'),
+    #     min=Min('income'),
+    #     avg=Avg('income'),
+    #     sum=Sum('income'),
+    #     var=Variance('income'),
+    #     std=StdDev('income'),
+    # ))
+    # print(sales)
+    # print(connection.queries)
+    # ============================
+    # fetch all restaurants and count their names char'
+    # annotate add an property to the object so you can access it by dot .
+    # res = Restaurant.objects.annotate(len_name=Length('name')) # this will return objects
+    # res2 = Restaurant.objects.values('name').annotate(len_name=Length('name')) # this will return dictinaries
+    # # for rest in res:
+    # #     print(rest.len_name)
+    # for rest in res2:
+    #     print(rest.get('len_name'))
+    # # print(res)
+    # print(connection.queries)
+    # =============================
+    # most important notes !!!!!!!!!!!!!!!!!!
+    #  every returned object i add attribute to it to calc the length of name
+    # after that i filtered this objects based on the len_name__gte=4
+    # then i just returned two values name and len_name in dictionary
+    # using values before annotate will make group by for unique values column values 
+    # while making values after annotate will make for every model in the database 
+    # you can aggregate the annotated values from 
+    # ==============================
+    # res = Restaurant.objects.annotate(len_name=Length('name')).filter(
+    #     len_name__gte=4
+    # ).values('name', 'len_name')
+    # print(res)
+    # print(connection.queries)
+    # ============================
+    # concat values on the database level
+    concatenation = Concat(
+        'name', Value(' [Rating: '), Avg('rating__rating'), Value(' ]'),
+        output_field=CharField()
     )
+    total_sales = Concat(
+        'name', Value('[total_sales : '), Sum(
+            'sale_related__income'), Value(' ]'),
+        output_field=CharField()
+    )
+    # this will make for every instance in database then will appear this values in values method
+    res = Restaurant.objects.annotate(msg=concatenation,
+                                      total_sales=total_sales,
+                                      avg_rating=Avg('rating__rating')
+                                      ).values('msg', 'total_sales', 'avg_rating'
+                                               ).order_by('total_sales')
+    # will make group by every name field in database then will make annotate on it 
+    res2 = Restaurant.objects.values('name').annotate(
+                                    msg=concatenation,
+                                    total_sales=total_sales,
+                                    avg_rating=Avg('rating__rating')
+                                    ).order_by(
+                                        'total_sales'
+                                    )
+    print(res)
+    print(res2)
+    print(connection.queries)
