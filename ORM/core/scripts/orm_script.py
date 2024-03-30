@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.db import connection
 from django.db.models import Count, Avg, Max, Min, Sum, Variance, StdDev, CharField, Value, F, Q
-from django.db.models.functions import Length, Upper, Concat
+from django.db.models.functions import Length, Upper, Concat, Coalesce
 from pprint import pprint
 from django.db.models.functions import Lower, Upper
 import random
@@ -529,19 +529,64 @@ def run():
     # )
     # print(res)
     # ================================
-    # find sale for restausrants which 
-    # rest name contains number and res profit is more than 
+    # find sale for restausrants which
+    # rest name contains number and res profit is more than
     # ependiture
-    res_contains_num = Q(restaurant__name__regex=r"[0-9]+")
+    # res_contains_num = Q(restaurant__name__regex=r"[0-9]+")
     # sale = Sale.objects.filter(
     #     res_contains_num & Q(income__gt=F('expenditure'))
     #                            ).values('restaurant__name')
     # sale = Sale.objects.filter(
     #     res_contains_num & Q(income__gt=F('expenditure'))
     # )
-    sale = Sale.objects.select_related('restaurant').filter(
-        res_contains_num & Q(income__gt=F('expenditure'))
-    )
-    for sa in sale:
-        print(sa.restaurant.name)
-    print(connection.queries)
+    # sale = Sale.objects.select_related('restaurant').filter(
+    #     res_contains_num & Q(income__gt=F('expenditure'))
+    # )
+    # for sa in sale:
+    #     print(sa.restaurant.name)
+    # ================================
+    # handle null values
+    # res = Restaurant.objects.filter(capacity__isnull=True)
+
+    # Restaurant.objects.filter(name__startswith="ab").update(
+    #     capacity=10
+    # )
+    # res = Restaurant.objects.filter(capacity__isnull=False)
+    # print("res", res)
+    # ===============================
+    # how django handle null values ordering
+
+    # res = Restaurant.objects.order_by(
+    #     'capacity').values('id', 'name', 'capacity')
+    # res = Restaurant.objects.order_by(
+    #     F('capacity').desc(nulls_last=True)).values('id', 'name', 'capacity')
+    # res2 = Restaurant.objects.order_by(
+    #     F('capacity').asc(nulls_last=True)).values('id', 'name', 'capacity')
+    # print(res2)
+
+    # print(connection.queries)
+    # ================================
+    # using coalesce values
+    # Restaurant.objects.filter(capacity__isnull=False).update(
+    #     capacity=None
+    # )
+    # another way to handle null values on database
+    # res2 = Restaurant.objects.aggregate(
+    #     total_capc=Sum('capacity', default=1))
+    # res2 = Restaurant.objects.aggregate(
+    # total_capc=Coalesce(Sum('capacity'), Value(1)))
+    # print(res2)
+    # print(Rating.objects.filter(
+    #     rating__lt=0
+    # ).aggregate(
+    #     avg_rating=Coalesce(Avg('rating'), 0.0)
+    # ))
+    # ================================
+    # using Coalesce with annotate and F
+    # Restaurant.objects.filter(id=1).update(nickname="hamada")
+    # res = Restaurant.objects.annotate(
+    #     nick_name=Coalesce(F('nickname'), F('name'))
+    # ).values('nick_name')
+    # print(res)
+    # print(connection.queries)
+    # ================================

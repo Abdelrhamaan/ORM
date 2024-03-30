@@ -51,6 +51,8 @@ class Restaurant(models.Model):
         validators=[MinValueValidator(-180), MaxValueValidator(180)])
     restaurant_type = models.CharField(
         max_length=2, choices=TypeChoices.choices)
+    capacity = models.PositiveSmallIntegerField(blank=True, null=True)
+    nickname = models.CharField(max_length=200, blank=True, null=True)
 
     def __str__(self) -> str:
         return self.name
