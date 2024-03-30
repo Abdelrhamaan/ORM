@@ -2,7 +2,7 @@ from core.models import Restaurant, Rating, Sale, Staff, StaffRestauarant
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.db import connection
-from django.db.models import Count, Avg, Max, Min, Sum, Variance, StdDev, CharField, Value
+from django.db.models import Count, Avg, Max, Min, Sum, Variance, StdDev, CharField, Value, F, Q
 from django.db.models.functions import Length, Upper, Concat
 from pprint import pprint
 from django.db.models.functions import Lower, Upper
@@ -401,9 +401,9 @@ def run():
     #  every returned object i add attribute to it to calc the length of name
     # after that i filtered this objects based on the len_name__gte=4
     # then i just returned two values name and len_name in dictionary
-    # using values before annotate will make group by for unique values column values 
-    # while making values after annotate will make for every model in the database 
-    # you can aggregate the annotated values from 
+    # using values before annotate will make group by for unique values column values
+    # while making values after annotate will make for every model in the database
+    # you can aggregate the annotated values from
     # ==============================
     # res = Restaurant.objects.annotate(len_name=Length('name')).filter(
     #     len_name__gte=4
@@ -412,29 +412,136 @@ def run():
     # print(connection.queries)
     # ============================
     # concat values on the database level
-    concatenation = Concat(
-        'name', Value(' [Rating: '), Avg('rating__rating'), Value(' ]'),
-        output_field=CharField()
+    # concatenation = Concat(
+    #     'name', Value(' [Rating: '), Avg('rating__rating'), Value(' ]'),
+    #     output_field=CharField()
+    # )
+    # total_sales = Concat(
+    #     'name', Value('[total_sales : '), Sum(
+    #         'sale_related__income'), Value(' ]'),
+    #     output_field=CharField()
+    # )
+    # # this will make for every instance in database then will appear this values in values method
+    # res = Restaurant.objects.annotate(msg=concatenation,
+    #                                   total_sales=total_sales,
+    #                                   avg_rating=Avg('rating__rating')
+    #                                   ).values('msg', 'total_sales', 'avg_rating'
+    #                                            ).order_by('total_sales')
+    # # will make group by every name field in database then will make annotate on it
+    # res2 = Restaurant.objects.values('name').annotate(
+    #                                 msg=concatenation,
+    #                                 total_sales=total_sales,
+    #                                 avg_rating=Avg('rating__rating')
+    #                                 ).order_by(
+    #                                     'total_sales'
+    #                                 )
+    # print(res)
+    # print(res2)
+    # print(connection.queries)
+    # ===============================
+    # using F experssions to make arthemtric operations on database level
+    # rating = Rating.objects.filter(rating=3).first()
+    # # this will happen in python memory
+    # rating.rating += 1
+    # rating.save(update_fields=['rating'])
+    # print(connection.queries)
+
+    # this will happen on database level instead of get value to python memory
+    # rate = Rating.objects.filter(rating=3).first()
+
+    # rate.rating = F('rating') + 1
+
+    # rate.save(update_fields=['rating'])
+
+    # ===============================
+    # Rating.objects.update(
+    #     rating=F('rating') * 2
+    # )
+    # Rating.objects.update(
+    #     rating=F('rating') / 2
+    # )
+    # ===============================
+    # sales = Sale.objects.all()
+    # for sale in sales:
+    # sale.expenditure = random.uniform(5, 100)
+
+    # update many instances in one query
+    # Sale.objects.bulk_update(sales, ['expenditure'])
+    # ===================================
+    # using F experssion to compare column with another in the same model
+    # sales = Sale.objects.filter(expenditure__gt=F('income'))
+    # print(sales)
+    # ==================================
+    # using f experssion with annotation
+    # profits = Sale.objects.annotate(
+    #     profits = (F('income') - F('expenditure'))
+    # ).values('profits').order_by('-profits')
+    # print(profits)
+    # ==================================
+    # using f expressions with aggregate
+    # data = Sale.objects.aggregate(
+    #     profits=Count('id', filter=Q(income__gt=F('expenditure'))),
+    #     loss=Count('id', filter=Q(income__lt=F('expenditure')))
+    # )
+
+    # print(data)
+    # print(connection.queries)
+    # ==================================
+    # rating = Rating.objects.filter(rating=3).first()
+    # refresh data base to prevent saving  f expression
+    # print(rating.rating)
+    # rating.rating = F('rating') + 1
+    # rating.save(update_fields=['rating'])
+    # print(rating.rating)  # F(rating) + Value(1) is still saved
+    # ==================================
+    # rating = Rating.objects.filter(rating=3).first()
+    # # refresh data base to prevent saving  f expression
+    # print(rating.rating)
+    # rating.rating = F('rating') + 1
+    # rating.save(update_fields=['rating'])
+    # rating.refresh_from_db()
+    # print(rating.rating)  # F(rating) + Value(1) is still saved
+
+    # ===============================
+    # using Q experssion for or and xor operators
+    # it = Restaurant.TypeChoices.ITALIAN
+    # ch = Restaurant.TypeChoices.CHINESE
+    # res = Restaurant.objects.filter(
+    #     (Q(restaurant_type=it) | Q(restaurant_type=ch)) & Q(name="ablabn"))
+
+    # res2= Restaurant.objects.filter(name__icontains="a")
+    # print(res2)
+    # print("res", res)
+    # =================================
+    # balabn_orsobhy = Q(name="asobhy") | Q(name="ablabn")
+    # recently_opened = Q(date_opened__gt=timezone.now() -
+    #                     timezone.timedelta(days=40))
+    # not_recently_opened = ~Q(date_opened__gt=timezone.now() -
+    #                          timezone.timedelta(days=40))
+    # res = Restaurant.objects.filter(
+    #     balabn_orsobhy | recently_opened
+    # )
+    # res = Restaurant.objects.filter(
+    #     balabn_orsobhy & recently_opened
+    # )
+    # res = Restaurant.objects.filter(
+    #     balabn_orsobhy & not_recently_opened
+    # )
+    # print(res)
+    # ================================
+    # find sale for restausrants which 
+    # rest name contains number and res profit is more than 
+    # ependiture
+    res_contains_num = Q(restaurant__name__regex=r"[0-9]+")
+    # sale = Sale.objects.filter(
+    #     res_contains_num & Q(income__gt=F('expenditure'))
+    #                            ).values('restaurant__name')
+    # sale = Sale.objects.filter(
+    #     res_contains_num & Q(income__gt=F('expenditure'))
+    # )
+    sale = Sale.objects.select_related('restaurant').filter(
+        res_contains_num & Q(income__gt=F('expenditure'))
     )
-    total_sales = Concat(
-        'name', Value('[total_sales : '), Sum(
-            'sale_related__income'), Value(' ]'),
-        output_field=CharField()
-    )
-    # this will make for every instance in database then will appear this values in values method
-    res = Restaurant.objects.annotate(msg=concatenation,
-                                      total_sales=total_sales,
-                                      avg_rating=Avg('rating__rating')
-                                      ).values('msg', 'total_sales', 'avg_rating'
-                                               ).order_by('total_sales')
-    # will make group by every name field in database then will make annotate on it 
-    res2 = Restaurant.objects.values('name').annotate(
-                                    msg=concatenation,
-                                    total_sales=total_sales,
-                                    avg_rating=Avg('rating__rating')
-                                    ).order_by(
-                                        'total_sales'
-                                    )
-    print(res)
-    print(res2)
+    for sa in sale:
+        print(sa.restaurant.name)
     print(connection.queries)
