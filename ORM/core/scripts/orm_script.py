@@ -2,11 +2,12 @@ from core.models import Restaurant, Rating, Sale, Staff, StaffRestauarant
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.db import connection
-from django.db.models import Count, Avg, Max, Min, Sum, Variance, StdDev, CharField, Value, F, Q
+from django.db.models import Count, Avg, Max, Min, Sum, Variance, StdDev, CharField, Value, F, Q, Case, When, DecimalField, BooleanField
 from django.db.models.functions import Length, Upper, Concat, Coalesce
 from pprint import pprint
 from django.db.models.functions import Lower, Upper
 import random
+import itertools
 
 
 def run():
@@ -247,7 +248,7 @@ def run():
     # print(res.sale_related.all())
     # print(connection.queries)
     # =================
-    # res = Restaurant.objects.earliest('date_opened')
+    # res = Restaurant.objects. ('date_opened')
     # res = Restaurant.objects.latest('date_opened')
     # if made get_latest_by = 'date_opened' in class Meta
     # res = Restaurant.objects.latest()
@@ -590,3 +591,136 @@ def run():
     # print(res)
     # print(connection.queries)
     # ================================
+    # italian = Restaurant.TypeChoices.ITALIAN
+    # annotate any italian rest..
+    # res = Restaurant.objects.annotate(
+    #     is_italian=Case(
+    #         When(restaurant_type=italian, then=True), default=False
+    #     )
+    # ).values('name', 'is_italian')
+    # res = Restaurant.objects.annotate(
+    #     is_italian=Case(
+    #         When(restaurant_type=italian, then=True), default=False
+    #     )
+    # ).filter(is_italian=True).values('name', 'is_italian')
+    # print(res)
+    # ================================
+    # res = Restaurant.objects.annotate(nsales=Count('sale_related'))
+    # restaurants = res.annotate(
+    #     is_popular=Case(When(
+    #         nsales__gt=4, then=True
+    #     ), default=False)
+    # ).values('name', 'nsales', 'is_popular').filter(
+    #     is_popular=True
+    # )
+    # print(restaurants)
+    # print(connection.queries)
+
+    # ================================
+    # annotate sales more than 80000
+
+    # good example
+    # res = Sale.objects.annotate(
+    #     sale_more_8=Case(
+    #         When(income__gt=80000, then=F('income')),
+    #         default=Value(0),
+    #         output_field=DecimalField()  # Set output_field to DecimalField
+    #     )
+    # ).filter(
+    #     sale_more_8__gt=80000
+    # ).values(
+    #     'restaurant__name', 'sale_more_8'
+    # )
+    # print(res)
+    # print(connection.queries)
+    # =================================
+    # res = Restaurant.objects.annotate(
+    # avg_rating=Avg('rating__rating'),
+    # num_ratings=Count('rating__pk')
+    # )
+    # res2 = res.annotate(
+    #     more_than_3=Case(
+    #         When(avg_rating__gt=3.4, then=F('avg_rating')),
+    #         default=0.0,
+    #         output_field=DecimalField()
+    #     ),
+    #     rating_more19=Case(
+    #         When(num_ratings__gt=19, then=F('num_ratings'))
+    #     )
+    # ).values('name', 'more_than_3', 'num_ratings')
+    # res2 = res.annotate(
+    # high_res=Case(
+    # When(avg_rating__gt=3.4, num_ratings__gte=19, then=True),
+    # default=False,
+    # output_field=BooleanField()  # Set output_field to BooleanField
+    # )
+    # ).values('name', 'avg_rating', 'num_ratings', 'high_res').filter(high_res=True)
+    # print(res.values('name', 'avg_rating', 'num_ratings'))
+    # print(res2)
+    # ===========================================
+    # res = Restaurant.objects.annotate(
+    #     avg_rating=Avg('rating__rating')
+    # )
+
+    # res2 = res.annotate(
+    #     rating_bucket=Case(
+    #         When(avg_rating__gt=3.4, then=Value('Highly rated')),
+    #         When(avg_rating__range=(2.4, 3.4), then=Value('Average rated')),
+    #         When(avg_rating__lt=2.4, then=Value('Bad rated'))
+    #     )
+    # ).values('name', 'rating_bucket', 'avg_rating')
+    # print(res2)
+    # ===========================================
+    # types = Restaurant.TypeChoices
+    # res = Restaurant.objects.annotate(
+    #     continent=Case(
+    #         When(Q(restaurant_type=types.ITALIAN) | Q(
+    #             restaurant_type=types.GREEK), then=Value('Europe')),
+    #         When(Q(restaurant_type=types.CHINESE) | Q(
+    #             restaurant_type=types.INDIAN), then=Value('Asia')),
+    #         When(restaurant_type=types.MEXICAN, then=Value('North America')),
+    #         default=Value('N/A')
+    #     )
+    # )
+    # europian = Q(restaurant_type=types.ITALIAN) | Q(
+    #     restaurant_type=types.GREEK)
+    # asian = Q(restaurant_type=types.CHINESE) | Q(
+    #     restaurant_type=types.INDIAN)
+    # north_americain = Q(restaurant_type = types.MEXICAN)
+    # res = Restaurant.objects.annotate(
+    #     continent=Case(
+    #         When(europian, then=Value('Europe')),
+    #         When(asian, then=Value('Asia')),
+    #         When(north_americain, then=Value('North America')),
+    #         default=Value('N/A')
+    #     )
+    # )
+    # print(res.values('name', 'continent'))
+    # print(connection.queries)
+    # ============================================
+    first_sale = Sale.objects.aggregate(first_sale_date=Min('datatime'))[
+        'first_sale_date']
+    last_sale = Sale.objects.aggregate(last_sale_date=Max('datatime'))[
+        'last_sale_date']
+
+    count = itertools.count()
+    dates = []
+    while (dt := first_sale + timezone.timedelta(days=10*next(count))) <= last_sale:
+        dates.append(dt)
+    whens = [
+        When(
+            datatime__range=(dt, dt+timezone.timedelta(days=10)), then=Value(dt.date())
+        )for dt in dates
+    ]
+
+    case = Case(
+        *whens,
+        output_field=CharField()
+    )
+
+    print(
+        Sale.objects.annotate(
+            daterange=case
+        ).values('daterange').annotate(total_sales=Sum('income'))
+    )
+    print(connection.queries)
