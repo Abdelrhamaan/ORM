@@ -24,8 +24,11 @@ To get started with this project, follow these steps:
    ```bash
    git clone git@github.com:Abdelrhamaan/ORM.git
 
-3-Install the dependencies:
+3. Install the dependencies:
+   ```bash
    pip install -r requirements.txt
-3-Run the Django project:
+
+3. Run the Django project:
+    ```bash
    python manage.py runserver
 
