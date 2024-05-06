@@ -1,9 +1,11 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 # from .forms import RatingForm
-from .forms import RestaurantForm
-from .models import Restaurant, Rating, Sale, StaffRestauarant
+from .forms import RestaurantForm, OrderForm, ProductExceptionError
+from .models import Restaurant, Rating, Sale, StaffRestauarant, Product
 from django.db.models import Sum, Prefetch
 from django.utils import timezone
+from django.db import transaction
+from functools import partial
 
 
 def index(request):
@@ -55,7 +57,66 @@ def index(request):
     # jobs = StaffRestauarant.objects.all()
     jobs = StaffRestauarant.objects.prefetch_related('restaurant', 'staff')
 
-    for job in jobs :
+    for job in jobs:
         job.restaurant.name
         job.staff.name
     return render(request, 'index.html')
+
+
+def order_form(request):
+    if request.method == 'POST':
+        form = OrderForm(request.POST)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    order = form.save()
+                    # =======================
+                    # solve the problem of selecting the same record in the same time 2 books
+                    # prevent updating while the row is catching by select for update
+                    # select_for_update(nowait=True) will prevent row locking and will raise exeception
+                    # skip_locked=True will skip that row you make transaction on it and wil raise exception row not found
+                    product = Product.objects.select_for_update().get(
+                        id=form.cleaned_data['product'].pk
+                    )
+                    # try to consume it in the same time from django admin or python shell
+                    import time
+                    time.sleep(80)
+                    # =======================
+                    # the order will not created due to transaction
+                    #  if you removed transaction the order will be created
+                    # also if you didn't handle save method and an error occurs it will return back
+
+                    # server crash summilating
+                    # import sys
+                    # sys.exit(1)
+                    order.product.num_in_stock -= order.number_of_items
+                    order.product.save()
+
+                # send emails if transaction success
+                transaction.on_commit(partial(send_emails, 'ahmed@gmail.com'))
+            except ProductExceptionError:
+                send_emails_refused()
+            return redirect('order_form')
+        else:
+
+            context = {'form': form}
+        return render(request, 'order_form.html', context)
+    form = OrderForm(request.POST)
+    context = {'form': form}
+
+    return render(request, 'order_form.html', context)
+
+
+def send_emails(user):
+    print(f'Dear {user} thanks for making your order')
+
+
+def send_emails_refused(user=''):
+    print(f'Dear {user} your order not happened due to some errors ')
+
+
+# with transaction.atomic():
+#     product = Product.objects.select_for_update(skip_locked= True).get(id=1)
+#     product.num_in_stock = 50
+
+#     product.save()
