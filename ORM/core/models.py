@@ -40,8 +40,10 @@ class Restaurant(models.Model):
         MEXICAN = 'M', 'Mexican'
         FASTFOOD = 'F', 'Fast Food'
         OTHER = 'OT', 'Other'
-    name = models.CharField(max_length=100, validators=[
-                            custom_validators.validate_name_startswith_a, custom_validators.validate_name_contains_dot])
+    name = models.CharField(max_length=100,
+                            # validators=[
+                            # custom_validators.validate_name_startswith_a, custom_validators.validate_name_contains_dot]
+                            )
     # name = models.CharField(max_length=100, validators=[validate_name_startswith_a])
     website = models.URLField(default='', null=True, blank=True)
     date_opened = models.DateField()
@@ -65,9 +67,9 @@ class Restaurant(models.Model):
     def clean(self) -> None:
         print("in clean")
         name = self.name
-        custom_validators = CustomValidators()
-        custom_validators.validate_name_contains_dot(name)
-        custom_validators.validate_name_startswith_a(name)
+        # custom_validators = CustomValidators()
+        # custom_validators.validate_name_contains_dot(name)
+        # custom_validators.validate_name_startswith_a(name)
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -90,7 +92,8 @@ class Sale(models.Model):
     restaurant = models.ForeignKey(
         Restaurant, on_delete=models.SET_NULL, null=True, related_name='sale_related')
     income = models.DecimalField(max_digits=8, decimal_places=2)
-    expenditure = models.DecimalField(max_digits=8, decimal_places=2)
+    expenditure = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True)
     datatime = models.DateTimeField()
 
 
@@ -107,3 +110,23 @@ class StaffRestauarant(models.Model):
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE)
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE)
     salary = models.FloatField(null=True)
+
+
+class Product(models.Model):
+    name = models.CharField(max_length=200)
+    num_in_stock = models.PositiveSmallIntegerField()
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Order(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    number_of_items = models.PositiveSmallIntegerField()
+
+    def __str__(self) -> str:
+        return f'{self.number_of_items} x {self.product.name}'
+
+
+class DummyModel(models.Model):
+    name = models.CharField(max_length=200)

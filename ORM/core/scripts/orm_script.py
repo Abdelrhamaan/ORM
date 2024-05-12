@@ -1,8 +1,8 @@
-from core.models import Restaurant, Rating, Sale, Staff, StaffRestauarant
+from core.models import Restaurant, Rating, Sale, Staff, StaffRestauarant, Product
 from django.contrib.auth.models import User
 from django.utils import timezone
-from django.db import connection
-from django.db.models import Count, Avg, Max, Min, Sum, Variance, StdDev, CharField, Value, F, Q, Case, When, DecimalField, BooleanField
+from django.db import connection, transaction
+from django.db.models import Count, Avg, Max, Min, Sum, Variance, StdDev, CharField, Value, F, Q, Case, When, DecimalField, BooleanField, Subquery, OuterRef, Exists
 from django.db.models.functions import Length, Upper, Concat, Coalesce
 from pprint import pprint
 from django.db.models.functions import Lower, Upper
@@ -698,29 +698,127 @@ def run():
     # print(res.values('name', 'continent'))
     # print(connection.queries)
     # ============================================
-    first_sale = Sale.objects.aggregate(first_sale_date=Min('datatime'))[
-        'first_sale_date']
-    last_sale = Sale.objects.aggregate(last_sale_date=Max('datatime'))[
-        'last_sale_date']
+    # first_sale = Sale.objects.aggregate(first_sale_date=Min('datatime'))[
+    #     'first_sale_date']
+    # last_sale = Sale.objects.aggregate(last_sale_date=Max('datatime'))[
+    #     'last_sale_date']
 
-    count = itertools.count()
-    dates = []
-    while (dt := first_sale + timezone.timedelta(days=10*next(count))) <= last_sale:
-        dates.append(dt)
-    whens = [
-        When(
-            datatime__range=(dt, dt+timezone.timedelta(days=10)), then=Value(dt.date())
-        )for dt in dates
+    # count = itertools.count()
+    # dates = []
+    # while (dt := first_sale + timezone.timedelta(days=10*next(count))) <= last_sale:
+    #     dates.append(dt)
+    # whens = [
+    #     When(
+    #         datatime__range=(dt, dt+timezone.timedelta(days=10)), then=Value(dt.date())
+    #     )for dt in dates
+    # ]
+
+    # case = Case(
+    #     *whens,
+    #     output_field=CharField()
+    # )
+
+    # print(
+    #     Sale.objects.annotate(
+    #         daterange=case
+    #     ).values('daterange').annotate(total_sales=Sum('income'))
+    # )
+    # =============================================
+    # restaurants = Restaurant.objects.filter(restaurant_type__in=['IN', 'IT']).values('pk')
+    # sales = Sale.objects.filter(restaurant__in=Subquery(restaurants)).values('income')
+    # print(sales)
+    # print(len(sales))
+    # print(len(Sale.objects.filter(
+    #     restaurant__restaurant_type__in=['IN', 'IT']).values('income')))
+    # =============================================
+    # sale = Sale.objects.filter(restaurant=OuterRef('pk')).order_by('-datatime')
+    # res = Restaurant.objects.all()
+    # restaurants = res.annotate(
+    #     last_sale_income=Subquery(sale.values('income')),
+    #     last_sale_expenditure=Subquery(sale.values('expenditure')),
+    #     last_sale_profit=F('last_sale_income') - F('last_sale_expenditure'),
+    # ).values(
+    #     'pk', 'last_sale_income',
+    #     'last_sale_expenditure',
+    #     'last_sale_profit',
+    # )
+    # print(restaurants)
+
+    # for res in restaurants:
+    #     print(f"{res.pk} : {res.last_sale}")
+    # ==============================================
+    # res = Restaurant.objects.filter(
+    #     Exists(Sale.objects.filter(restaurant = OuterRef('pk'), income__gte = 70000))
+    # ).count()
+    # exists is boolean so this will return all res which its rating is equal to 5
+    # res = Restaurant.objects.filter(
+    #     Exists(Rating.objects.filter(restauarant=OuterRef('pk'), rating=5))
+    # ).values('name', 'capacity')
+
+    # exists is boolean so this will return all res which its rating is not equal to 5
+    # res = Restaurant.objects.filter(
+    #     ~Exists(Rating.objects.filter(restauarant=OuterRef('pk'), rating=5))
+    # )
+    # print(res.count())
+    # ============================================
+    # get all res with sales in the last five days
+
+    # last_five_days_date = timezone.now() - timezone.timedelta(days=29)
+
+    # sales = Sale.objects.filter(
+    #     datatime__gt = last_five_days_date,
+    #     restaurant = OuterRef('pk')
+    # )
+    # res = Restaurant.objects.filter(
+    #     ~Exists(sales)
+    # ).values('name')
+    # print(res)
+    # print(connection.queries)
+    # ==========================================
+    # we will try to change in book while in transaction by openinig another python shell
+    # import time
+    # with transaction.atomic():
+    #     # select for update lock this row until transaction is finishing  in it
+    #     book = Product.objects.select_for_update().get(name='Book')
+    #     time.sleep(60)
+    # ===========================================
+    # content types frame work
+    from django.contrib.contenttypes.models import ContentType
+
+    models = ContentType.objects.filter(app_label='core')
+    models_list = [
+        c.model for c in models
     ]
+    print("models_list", models_list)
 
-    case = Case(
-        *whens,
-        output_field=CharField()
-    )
+    # get the actual model
 
-    print(
-        Sale.objects.annotate(
-            daterange=case
-        ).values('daterange').annotate(total_sales=Sum('income'))
+    content_type = ContentType.objects.get(
+        app_label='core', model='restaurant'
     )
-    print(connection.queries)
+    rest_class = content_type.model_class()
+    print("rest_class", rest_class)
+    # retrive all data for that class
+    all_rest_data = rest_class.objects.all()
+    print("all_rest_data", all_rest_data)
+
+    # get method
+    ablabn_rest = content_type.get_object_for_this_type(name='ablabn')
+    print("ablabn_rest", ablabn_rest)
+    print("ablabn_rest", ablabn_rest.website)
+    print("ablabn_rest", ablabn_rest.latitude)
+    print("ablabn_rest", ablabn_rest._meta.fields)
+    for record in ablabn_rest._meta.fields:
+        print("rec", record.name)
+        # print("rec", ablabn_rest.record.name)
+
+    # get content type inst for any model from content type mananger methods
+
+    rating_content_type = ContentType.objects.get_for_model(Rating)
+    print("rating_content_type", rating_content_type)
+    print("rating_content_type", rating_content_type.model)
+    print("rating_content_type", rating_content_type.app_label)
+    print("rating_content_type", rating_content_type.model_class().objects.all())
+    ratings_content_type = ContentType.objects.get_for_models(
+        Rating, Restaurant)
+    print("ratings_content_type", ratings_content_type)

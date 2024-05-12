@@ -1,4 +1,5 @@
 ---
+
 # Django ORM Showcase
 
 ## Introduction
@@ -18,17 +19,23 @@ In this project, we have implemented the same functionality using different Djan
 ## Getting Started
 
 To get started with this project, follow these steps:
+
 1. Content:
-   
 2. Clone the repository:
+
    ```bash
    git clone git@github.com:Abdelrhamaan/ORM.git
 
+   ```
+
 3. Install the dependencies:
+
    ```bash
    pip install -r requirements.txt
 
-3. Run the Django project:
-    ```bash
-   python manage.py runserver
+   ```
 
+4. Run the Django project:
+   ```bash
+   python manage.py runserver
+   ```

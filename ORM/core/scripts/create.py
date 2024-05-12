@@ -6,12 +6,12 @@ from datetime import datetime
 
 
 def run():
-    # for _ in range(30):
-    #     Rating.objects.create(
-    #         user=User.objects.get(pk=1),
-    #         restauarant=Restaurant.objects.get(pk=random.randint(1, 6)),
-    #         rating=random.randint(1, 5)
-    #     )
+    for _ in range(30):
+        Rating.objects.create(
+            user=User.objects.get(pk=1),
+            restauarant=Restaurant.objects.get(pk=random.randint(1, 6)),
+            rating=random.randint(1, 5)
+        )
 
     for _ in range(30):
         Sale.objects.create(
